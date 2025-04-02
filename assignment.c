@@ -1,3 +1,9 @@
+/*
+SRN: PES1UG22CS568
+Name: Shreevathsa Gorur Prashanth
+Section: J
+*/
+
 #include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>

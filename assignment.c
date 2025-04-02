@@ -129,6 +129,42 @@ int main( int argc, char * argv[] ) {
                 byte cache_slot = mem_location % CACHE_SIZE;
 
                 switch ( incoming_msg.type ) {
+                    case WRITE_REQUEST:
+                        if (local_node.directory[mem_location].state == U) {
+                            response_msg = (message) {
+                                .type = REPLY_WR,
+                                .sender = current_thread,
+                                .address = incoming_msg.address,
+                            };
+
+                            sendMessage( incoming_msg.sender, response_msg );
+                        } else if (local_node.directory[mem_location].state == S) {
+                            byte other_nodes = local_node.directory[mem_location].bitVector & (~(1 << incoming_msg.sender));
+                            response_msg = (message) {
+                                .type = REPLY_ID,
+                                .sender = current_thread,
+                                .address = incoming_msg.address,
+                                .bitVector = other_nodes,
+                            };
+                            sendMessage( incoming_msg.sender, response_msg );
+                        } else if (local_node.directory[mem_location].state == EM) {
+                            response_msg = (message) {
+                                .type = WRITEBACK_INV,
+                                .sender = current_thread,
+                                .address = incoming_msg.address,
+                                .value = incoming_msg.value,
+                                .secondReceiver = incoming_msg.sender,
+                            };
+
+                            int previous_owner = __builtin_ctz(local_node.directory[mem_location].bitVector);
+                            sendMessage( previous_owner, response_msg );
+                        }
+
+                        local_node.directory[mem_location].state = EM;
+                        local_node.directory[mem_location].bitVector = (1 << incoming_msg.sender);
+
+                        break;
+
                     case READ_REQUEST:
                         if (local_node.directory[mem_location].state == EM) {
                             response_msg = (message) {
@@ -255,42 +291,6 @@ int main( int argc, char * argv[] ) {
                         if (local_node.cache[ cache_slot ].address == incoming_msg.address) {
                             local_node.cache[ cache_slot ].state = INVALID;
                         }
-                        break;
-
-                    case WRITE_REQUEST:
-                        if (local_node.directory[mem_location].state == U) {
-                            response_msg = (message) {
-                                .type = REPLY_WR,
-                                .sender = current_thread,
-                                .address = incoming_msg.address,
-                            };
-
-                            sendMessage( incoming_msg.sender, response_msg );
-                        } else if (local_node.directory[mem_location].state == S) {
-                            byte other_nodes = local_node.directory[mem_location].bitVector & (~(1 << incoming_msg.sender));
-                            response_msg = (message) {
-                                .type = REPLY_ID,
-                                .sender = current_thread,
-                                .address = incoming_msg.address,
-                                .bitVector = other_nodes,
-                            };
-                            sendMessage( incoming_msg.sender, response_msg );
-                        } else if (local_node.directory[mem_location].state == EM) {
-                            response_msg = (message) {
-                                .type = WRITEBACK_INV,
-                                .sender = current_thread,
-                                .address = incoming_msg.address,
-                                .value = incoming_msg.value,
-                                .secondReceiver = incoming_msg.sender,
-                            };
-
-                            int previous_owner = __builtin_ctz(local_node.directory[mem_location].bitVector);
-                            sendMessage( previous_owner, response_msg );
-                        }
-
-                        local_node.directory[mem_location].state = EM;
-                        local_node.directory[mem_location].bitVector = (1 << incoming_msg.sender);
-
                         break;
 
                     case REPLY_WR:
@@ -459,21 +459,21 @@ void handleCacheReplacement( int sender, cacheLine old_cache_line ) {
     message evict_msg;
     
     switch ( old_cache_line.state ) {
-        case EXCLUSIVE:
-        case SHARED:
-            evict_msg = (message) {
-                .type = EVICT_SHARED,
-                .sender = sender,
-                .address = old_cache_line.address,
-            };
-            sendMessage( target_proc, evict_msg );
-            break;
         case MODIFIED:
             evict_msg = (message) {
                 .type = EVICT_MODIFIED,
                 .sender = sender,
                 .address = old_cache_line.address,
                 .value = old_cache_line.value,
+            };
+            sendMessage( target_proc, evict_msg );
+            break;
+        case EXCLUSIVE:
+        case SHARED:
+            evict_msg = (message) {
+                .type = EVICT_SHARED,
+                .sender = sender,
+                .address = old_cache_line.address,
             };
             sendMessage( target_proc, evict_msg );
             break;

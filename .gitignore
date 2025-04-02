@@ -1,0 +1,10 @@
+/cache_simulator
+/core_*_output.txt
+
+# general ignorance
+*.o
+*.out
+*.exe
+*.a
+*.so
+*.dll

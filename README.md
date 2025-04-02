@@ -1,7 +1,7 @@
 ---
-## SRN: PES1UG22CS568
-## Name: Shreevathsa Gorur Prashanth
-## Section: J
+### SRN: PES1UG22CS568
+### Name: Shreevathsa Gorur Prashanth
+### Section: J
 ---
 
 # Directory-Based Cache Coherence Protocol Simulation
